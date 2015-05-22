@@ -2,12 +2,10 @@ package GUI;
 
 import GUI.polling.PollingThread;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
 
@@ -44,22 +42,64 @@ public class SaftBlenderGUI extends JFrame {
     private JButton onButton;
     private JButton offButton;
 
-    private JLabel statusField;
     private JLabel statusDesc;
     private JLabel imageLabel;
     private ImageIcon onImage, offImage;
 
-    /***
-     * Default constructor, with default values
+    /**
+     * Custom constructor which sets all values to the ones entered.
+     * @param userName
+     * @param passWord
+     * @param url
+     */
+    public SaftBlenderGUI(String userName, String passWord, String url) {
+        setUserName(userName);
+        setPassWord(passWord);
+        try {
+            this.url = new URL(url);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        setAuthenticator();
+    }
+
+    public SaftBlenderGUI(String userName, String passWord) {
+        setUserName(userName);
+        setPassWord(passWord);
+        try {
+            this.url = new URL("http://saftblandaren.sportamore.se:8192");
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        setAuthenticator();
+    }
+
+    public SaftBlenderGUI(String url) {
+        setUserName("foop");
+        setPassWord("froopberry");
+        try {
+            this.url = new URL(url);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        setAuthenticator();
+    }
+
+    /**
+     * Default constructor with default values
      */
     public SaftBlenderGUI() {
         setUserName("foop");
         setPassWord("froopberry");
         try {
-            url = new URL("http://scramble.se:8192");
+            this.url = new URL("http://saftblandaren.sportamore.se:8192");
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
+        setAuthenticator();
+    }
+
+    private void setAuthenticator() {
         Authenticator.setDefault(new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
                 return new PasswordAuthentication(getUserName(), getPassword().toCharArray());
@@ -103,7 +143,7 @@ public class SaftBlenderGUI extends JFrame {
         this.setResizable(false);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setVisible(true);
-
+        this.getRootPane().setDefaultButton(offButton);
         this.previousStatus = 999;
 
         //Dispatch polling thread
@@ -111,6 +151,11 @@ public class SaftBlenderGUI extends JFrame {
         pollingThread.start();
     }
 
+    /**
+     * Sends a POST request to the server in an attempt to change it's status. Status 1 turns on the blender
+     * and status 0 turns off the blender.
+     * @param status The status we want to change the server to.
+     */
     private void sendPostRequest(int status) {
         try {
             connection = (HttpURLConnection)url.openConnection();
@@ -147,8 +192,19 @@ public class SaftBlenderGUI extends JFrame {
         }
     }
 
+    /**
+     * Takes a status string and changes the displayed gif if the status has changed since last time this method ran.
+     * @param status The controlling string.
+     */
     public void setStatusFieldDisplay(String status) {
-        int numberStatus = Integer.parseInt(status.substring(0,1));
+        int numberStatus;
+        try {
+            numberStatus = Integer.parseInt(status.substring(0,1));
+        } catch (NumberFormatException e) {
+            imageLabel.setText("Malformed response");
+            e.printStackTrace();
+            return;
+        }
 
         if(numberStatus == previousStatus) {
             return;
@@ -161,7 +217,8 @@ public class SaftBlenderGUI extends JFrame {
         } else if(numberStatus == 0) {
             imageLabel.setIcon(offImage);
         } else {
-            imageLabel.setText("Error");
+            /* Got some other number */
+            imageLabel.setText("Malformed status");
         }
     }
 }
